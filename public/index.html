@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <h1>My Name is Muhamad Usman</h1>
+    <p>Access the images in this project</p>
+    
+    <!-- Container to dynamically load content -->
+    <div id="content"></div>
+    
+    <!-- Link JavaScript file -->
+    <script>
+
+        // Wait until the DOM is fully loaded
+document.addEventListener('DOMContentLoaded', (event) => {
+    // Reference to the content container
+    const content = document.getElementById('content');
+    
+    // Array of assets to load
+    const assets = [
+        { type: 'image', src: 'assets/image1.jpg', alt: 'Sample Image' },
+        { type: 'pdf', src: 'assets/Mirza-Usman(218).pdf' }
+    ];
+    
+    // Function to create and append elements to the content container
+    assets.forEach(asset => {
+        if (asset.type === 'image') {
+            // Create image element
+            const img = document.createElement('img');
+            img.src = asset.src;
+            img.alt = asset.alt;
+            img.width = 600;
+            content.appendChild(img);
+        } else if (asset.type === 'pdf') {
+            // Create embed element for PDF
+            const embed = document.createElement('embed');
+            embed.src = asset.src;
+            embed.type = 'application/pdf';
+            embed.width = 600;
+            embed.height = 400;
+            content.appendChild(embed);
+            
+            // Create download link
+            const link = document.createElement('a');
+            link.href = asset.src;
+            link.download = '';
+            link.textContent = 'Download PDF';
+            content.appendChild(link);
+        }
+    });
+});
+
+    </script>
+</body>
+</html>

@@ -104,7 +104,7 @@ app.post(
       formData.append("id", id);
 
       const response = await axios.post(
-        "http://localhost:3000/api/upload",
+        "https://dashboard.imcwire.com/api/upload",
         formData
       );
 

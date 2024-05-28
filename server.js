@@ -77,7 +77,9 @@ app.post(
       await createDirectoryIfNotExists(pdfDirectory);
 
       const pdfFilePath = path.join(pdfDirectory, pdfFile.originalname);
+      await fsPromises.rename(pdfFile.path, pdfFilePath);
 
+      let excelFilePath;
       if (excelFile) {
         const excelFirstChar = excelFile.originalname[0].toUpperCase();
         const excelDirectory = path.join(
@@ -88,16 +90,17 @@ app.post(
         );
         await createDirectoryIfNotExists(excelDirectory);
 
-        const excelFilePath = path.join(excelDirectory, excelFile.originalname);
+        excelFilePath = path.join(excelDirectory, excelFile.originalname);
+        await fsPromises.rename(excelFile.path, excelFilePath);
       }
 
       // Sending files to the remote server
       const formData = new FormData();
-      formData.append("pdf", fs.createReadStream(pdfFile.path), {
+      formData.append("pdf", fs.createReadStream(pdfFilePath), {
         filename: pdfFile.originalname,
       });
       if (excelFile) {
-        formData.append("excel", fs.createReadStream(excelFile.path), {
+        formData.append("excel", fs.createReadStream(excelFilePath), {
           filename: excelFile.originalname,
         });
       }
@@ -118,6 +121,51 @@ app.post(
     }
   }
 );
+
+// Serve index.html when root path is requested
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Endpoint to get specific uploaded files
+app.get("/files", async (req, res) => {
+  try {
+    const { type, firstChar } = req.query;
+    const uploadDir = path.join(__dirname, 'uploads');
+    let filesList = await getFiles(uploadDir);
+
+    if (type) {
+      filesList = filesList.filter(file => {
+        const ext = path.extname(file).toLowerCase();
+        return (type === 'pdf' && ext === '.pdf') || (type === 'excel' && (ext === '.xlsx' || ext === '.xls'));
+      });
+    }
+
+    if (firstChar) {
+      filesList = filesList.filter(file => {
+        const fileName = path.basename(file);
+        return fileName[0].toUpperCase() === firstChar.toUpperCase();
+      });
+    }
+
+    res.json(filesList);
+  } catch (error) {
+    console.error("Error retrieving files:", error);
+    res.status(500).json({ error: "Internal server error while retrieving files" });
+  }
+});
+
+// Function to get all files in the directory
+const getFiles = async (dir, files = []) => {
+  const items = await fsPromises.readdir(dir, { withFileTypes: true });
+  for (const item of items) {
+    const fullPath = path.join(dir, item.name);
+    if (item.isDirectory()) {
+      await getFiles(fullPath, files);
+    } else {
+      files.push(fullPath);
+    }
+  }
+  return files;
+};
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

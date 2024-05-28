@@ -1,6 +1,7 @@
 const express = require("express");
 const multer = require("multer");
-const fs = require("fs").promises;
+const fs = require("fs");
+const fsPromises = require("fs").promises;
 const path = require("path");
 const axios = require("axios");
 const FormData = require("form-data");
@@ -8,15 +9,19 @@ const FormData = require("form-data");
 const app = express();
 const PORT = 3003;
 
-// const storage = multer.diskStorage({
-//   destination: function (req, file, cb) {
-//     cb(null, path.join(__dirname, 'uploads')); 
-//   },
-//   filename: function (req, file, cb) {
-//     cb(null, file.originalname); 
-//   }
-// });
-const storage = multer.memoryStorage();
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    // Create the upload directory if it doesn't exist
+    const uploadDir = path.join(__dirname, 'uploads');
+    fsPromises.mkdir(uploadDir, { recursive: true })
+      .then(() => cb(null, uploadDir))
+      .catch((err) => cb(err));
+  },
+  filename: function (req, file, cb) {
+    cb(null, file.originalname);
+  }
+});
+
 const upload = multer({
   storage: storage,
   fileFilter: function (req, file, cb) {
@@ -38,10 +43,10 @@ const upload = multer({
 // Function to create directory if not exists
 const createDirectoryIfNotExists = async (directoryPath) => {
   try {
-    await fs.access(directoryPath);
+    await fsPromises.access(directoryPath);
   } catch (error) {
     if (error.code === "ENOENT") {
-      await fs.mkdir(directoryPath, { recursive: true });
+      await fsPromises.mkdir(directoryPath, { recursive: true });
     } else {
       throw error;
     }
@@ -71,10 +76,7 @@ app.post(
       const pdfDirectory = path.join(__dirname, "uploads", "pdf", pdfFirstChar);
       await createDirectoryIfNotExists(pdfDirectory);
 
-      await fs.writeFile(
-        path.join(pdfDirectory, pdfFile.originalname),
-        pdfFile.buffer
-      );
+      const pdfFilePath = path.join(pdfDirectory, pdfFile.originalname);
 
       if (excelFile) {
         const excelFirstChar = excelFile.originalname[0].toUpperCase();
@@ -86,19 +88,16 @@ app.post(
         );
         await createDirectoryIfNotExists(excelDirectory);
 
-        await fs.writeFile(
-          path.join(excelDirectory, excelFile.originalname),
-          excelFile.buffer
-        );
+        const excelFilePath = path.join(excelDirectory, excelFile.originalname);
       }
 
       // Sending files to the remote server
       const formData = new FormData();
-      formData.append("pdf", pdfFile.buffer, {
+      formData.append("pdf", fs.createReadStream(pdfFile.path), {
         filename: pdfFile.originalname,
       });
       if (excelFile) {
-        formData.append("excel", excelFile.buffer, {
+        formData.append("excel", fs.createReadStream(excelFile.path), {
           filename: excelFile.originalname,
         });
       }
@@ -106,7 +105,8 @@ app.post(
 
       const response = await axios.post(
         "https://dashboard.imcwire.com/api/upload",
-        formData
+        formData,
+        { headers: formData.getHeaders() }
       );
 
       res.json(response.data);

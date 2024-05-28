@@ -6,16 +6,17 @@ const axios = require("axios");
 const FormData = require("form-data");
 
 const app = express();
-const PORT = 3001;
+const PORT = 3003;
 
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, 'uploads')); // Specify the destination directory
-  },
-  filename: function (req, file, cb) {
-    cb(null, file.originalname); // Use the original filename
-  }
-});
+// const storage = multer.diskStorage({
+//   destination: function (req, file, cb) {
+//     cb(null, path.join(__dirname, 'uploads')); 
+//   },
+//   filename: function (req, file, cb) {
+//     cb(null, file.originalname); 
+//   }
+// });
+const storage = multer.memoryStorage();
 const upload = multer({
   storage: storage,
   fileFilter: function (req, file, cb) {
